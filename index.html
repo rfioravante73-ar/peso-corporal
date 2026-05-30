@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Control de Peso | Rómulo & Paola</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'fade-in': 'fadeIn 0.4s ease-out', 'slide-up': 'slideUp 0.3s ease' },
+                    keyframes: { fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } }, slideUp: { '0%': { transform: 'translateY(12px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .toast-slide { animation: slideIn 0.2s ease forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -12px rgba(0,0,0,0.12); }
+        @media print {
+            body { background: white; }
+            .print-hide { display: none !important; }
+            .shadow-sm, .shadow-md { box-shadow: none !important; border: 1px solid #e2e8f0; }
+        }
+        .modal-red-gradient { background: linear-gradient(135deg, #fff1f0 0%, #ffe4e2 100%); border-left: 5px solid #dc2626; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- LANDING PAGE -->
+    <div id="landing-page" class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-white via-slate-50 to-slate-100 relative overflow-hidden px-6">
+        <div class="absolute inset-0 pointer-events-none opacity-30">
+            <div class="absolute top-20 left-10 w-72 h-72 bg-slate-200 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-10 right-10 w-96 h-96 bg-slate-300 rounded-full blur-3xl"></div>
+        </div>
+        <div class="relative z-10 max-w-3xl text-center animate-fade-in">
+            <div class="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-full px-4 py-1.5 shadow-sm mb-8">
+                <i class="fas fa-heartbeat text-rose-500 text-sm"></i>
+                <span class="text-xs font-semibold text-slate-600 tracking-wide">BIENESTAR & CONTROL</span>
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent leading-tight">Control de <br>Peso Corporal</h1>
+            <p class="text-slate-500 text-lg md:text-xl mt-6 mb-10 max-w-2xl mx-auto font-light">Edad automática · Rango saludable por edad e IMC · Alertas personalizadas</p>
+            <button onclick="enterApp()" class="inline-flex items-center gap-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-4 px-10 rounded-full shadow-xl transition-all duration-300 text-lg group">
+                <span>Acceder al panel</span>
+                <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="app-page" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 w-full">
+        <!-- HEADER -->
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2"><i class="fas fa-weight-scale text-slate-600 text-2xl"></i> Control de peso corporal</h1>
+                <p class="text-slate-400 text-sm mt-0.5">Edad calculada según fecha de nacimiento · Rango saludable (IMC 18.5–24.9)</p>
+            </div>
+            <div class="flex gap-3 print-hide">
+                <button onclick="window.print()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2.5 px-5 rounded-xl shadow-sm transition flex items-center gap-2"><i class="fas fa-print"></i> Imprimir</button>
+                <button onclick="openGlobalModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-5 rounded-xl shadow-md transition flex items-center gap-2"><i class="fas fa-plus-circle"></i> Nuevo registro</button>
+                <button onclick="exitApp()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-5 rounded-xl transition flex items-center gap-2"><i class="fas fa-sign-out-alt"></i> Salir</button>
+            </div>
+        </div>
+
+        <!-- GRÁFICO EVOLUCIÓN -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-8">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-chart-line mr-2 text-slate-500"></i> Evolución de peso (kg) por mes</h2>
+                <span class="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full">Promedio mensual</span>
+            </div>
+            <div class="w-full h-80 relative"><canvas id="evolutionChart"></canvas></div>
+        </div>
+
+        <!-- COLUMNAS: IZQUIERDA (RÓMULO) + DERECHA (PAOLA) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- COLUMNA RÓMULO (azul) -->
+            <div class="space-y-5">
+                <div class="bg-gradient-to-r from-blue-800 to-blue-700 rounded-2xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fas fa-mars text-sky-200"></i> Rómulo Fioravante</h2>
+                        <p class="text-slate-200 text-xs mt-0.5">Nac. 02/08/1973 · Rango saludable IMC 18.5–24.9</p>
+                    </div>
+                    <div id="romulo-current-age" class="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-white font-bold text-sm">-- años</div>
+                </div>
+                <!-- KPIs Rómulo + rango saludable adicional -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Último peso</p><p id="romulo-last-weight" class="text-xl font-bold text-slate-800">— kg</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Diferencia</p><p id="romulo-diff" class="text-xl font-bold text-slate-800">—</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Últ. fecha</p><p id="romulo-last-date" class="text-sm font-semibold text-slate-700">—</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Registros</p><p id="romulo-count" class="text-xl font-bold text-slate-800">0</p></div>
+                </div>
+                <!-- Indicador de peso saludable según última altura -->
+                <div id="romulo-healthy-range" class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 flex items-center gap-2">
+                    <i class="fas fa-heartbeat text-blue-600"></i> <span>Rango saludable actual: calculando...</span>
+                </div>
+                <!-- Tabla Rómulo -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr><th class="py-3 px-3 text-xs font-bold text-slate-500">#</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Fecha control</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Edad</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Estatura(cm)</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Peso(kg)</th><th class="py-3 px-3 text-xs font-bold text-slate-500">IMC</th><th class="py-3 px-3 text-xs font-bold text-slate-500 text-center">Acciones</th></tr>
+                            </thead>
+                            <tbody id="romulo-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-between items-center p-3 border-t border-slate-100 print-hide">
+                        <span id="romulo-pag-info" class="text-xs text-slate-500"></span>
+                        <div id="romulo-pagination" class="flex gap-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA PAOLA (rosa) -->
+            <div class="space-y-5">
+                <div class="bg-gradient-to-r from-pink-800 to-pink-700 rounded-2xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fas fa-venus text-pink-200"></i> Paola Galarza</h2>
+                        <p class="text-slate-200 text-xs mt-0.5">Nac. 17/03/1980 · Rango saludable IMC 18.5–24.9</p>
+                    </div>
+                    <div id="paola-current-age" class="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-white font-bold text-sm">-- años</div>
+                </div>
+                <!-- KPIs Paola -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Último peso</p><p id="paola-last-weight" class="text-xl font-bold text-slate-800">— kg</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Diferencia</p><p id="paola-diff" class="text-xl font-bold text-slate-800">—</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Últ. fecha</p><p id="paola-last-date" class="text-sm font-semibold text-slate-700">—</p></div>
+                    <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-slate-100 card-hover"><p class="text-[11px] font-semibold text-slate-500 uppercase">Registros</p><p id="paola-count" class="text-xl font-bold text-slate-800">0</p></div>
+                </div>
+                <!-- Indicador de peso saludable según última altura -->
+                <div id="paola-healthy-range" class="bg-pink-50 border border-pink-200 rounded-xl p-3 text-sm text-pink-800 flex items-center gap-2">
+                    <i class="fas fa-heartbeat text-pink-600"></i> <span>Rango saludable actual: calculando...</span>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr><th class="py-3 px-3 text-xs font-bold text-slate-500">#</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Fecha control</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Edad</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Estatura(cm)</th><th class="py-3 px-3 text-xs font-bold text-slate-500">Peso(kg)</th><th class="py-3 px-3 text-xs font-bold text-slate-500">IMC</th><th class="py-3 px-3 text-xs font-bold text-slate-500 text-center">Acciones</th></tr>
+                            </thead>
+                            <tbody id="paola-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-between items-center p-3 border-t border-slate-100 print-hide">
+                        <span id="paola-pag-info" class="text-xs text-slate-500"></span>
+                        <div id="paola-pagination" class="flex gap-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL (sin campo edad) -->
+    <div id="entry-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-up">
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-notes-medical text-slate-600"></i> Registrar control</h3>
+                <button onclick="closeEntryModal()" class="text-slate-400 hover:text-slate-800 text-2xl leading-5">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="weight-form">
+                    <input type="hidden" id="edit-id" value="">
+                    <div class="mb-4"><label class="block text-sm font-semibold text-slate-700 mb-1">Persona</label><select id="persona-select" required class="w-full border border-slate-200 rounded-xl px-4 py-3 bg-slate-50 focus:ring-2 focus:ring-slate-800"><option value="romulo">Rómulo Fioravante (n. 02/08/1973)</option><option value="paola">Paola Galarza (n. 17/03/1980)</option></select></div>
+                    <div class="mb-4"><label class="block text-sm font-semibold text-slate-700 mb-1">Fecha de control</label><input type="date" id="fecha-control" required class="w-full border border-slate-200 rounded-xl px-4 py-3 bg-slate-50"></div>
+                    <div class="mb-4"><label class="block text-sm font-semibold text-slate-700 mb-1">Estatura (cm)</label><input type="number" id="estatura-control" step="0.1" min="50" required placeholder="Ej: 175.5" class="w-full border border-slate-200 rounded-xl px-4 py-3 bg-slate-50"></div>
+                    <div class="mb-6"><label class="block text-sm font-semibold text-slate-700 mb-1">Peso corporal (kg)</label><input type="number" id="peso-control" step="0.1" min="0" required placeholder="Ej: 72.4" class="w-full border border-slate-200 rounded-xl px-4 py-3 bg-slate-50"></div>
+                    <div class="flex justify-end gap-3"><button type="button" onclick="closeEntryModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50">Cancelar</button><button type="submit" class="px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 shadow-md flex items-center gap-2"><i class="fas fa-save"></i> Guardar</button></div>
+                </form>
+                <p class="text-xs text-slate-400 mt-3 text-center">La edad se calcula automáticamente según fecha de nacimiento.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ROJO (exceso de peso) -->
+    <div id="alert-modal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border-l-8 border-red-500 modal-red-gradient p-5 animate-slide-up">
+            <div class="flex items-start gap-4">
+                <div class="bg-red-100 rounded-full p-2"><i class="fas fa-exclamation-triangle text-red-600 text-xl"></i></div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-red-700 text-lg">Exceso de peso detectado</h3>
+                    <p class="text-slate-700 text-sm mt-1">El IMC registrado supera el rango saludable (≥25). Te recomendamos consultar hábitos nutricionales y actividad física.</p>
+                    <button onclick="closeAlertModal()" class="mt-4 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-xl w-full transition">Entendido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdC8X_UJDzuBmOyqUWrzC6NNqJdViArcM",
+            authDomain: "peso-corporal-control.firebaseapp.com",
+            projectId: "peso-corporal-control",
+            storageBucket: "peso-corporal-control.firebasestorage.app",
+            messagingSenderId: "1023509753574",
+            appId: "1:1023509753574:web:b773ac60980f2366641527"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const recordsCollection = collection(db, "pesocorporal");
+
+        // Fechas de nacimiento fijas (formato YYYY-MM-DD)
+        const BIRTH_DATES = {
+            romulo: "1973-08-02",
+            paola: "1980-03-17"
+        };
+
+        let allRecords = [];
+        let romuloPage = 1, paolaPage = 1;
+        const ROWS_PER_PAGE = 10;
+        let chartInstance = null;
+        let unsubscribe = null;
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `bg-white shadow-lg rounded-xl px-5 py-3 flex items-center gap-3 border-l-4 ${type === 'success' ? 'border-green-500' : 'border-red-500'} toast-slide`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle text-green-500' : 'fa-exclamation-triangle text-red-500'}"></i><span class="text-sm font-medium text-slate-700">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // Calcula edad exacta entre fecha nacimiento y fecha control
+        function calculateAge(birthDateStr, controlDateStr) {
+            const birth = new Date(birthDateStr);
+            const control = new Date(controlDateStr);
+            let age = control.getFullYear() - birth.getFullYear();
+            const monthDiff = control.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && control.getDate() < birth.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        // Edad actual a partir de hoy
+        function getCurrentAge(birthDateStr) {
+            const today = new Date();
+            const birth = new Date(birthDateStr);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        function calcIMC(pesoKg, estaturaCm) {
+            if (!pesoKg || !estaturaCm || estaturaCm <= 0) return 0;
+            const alturaM = estaturaCm / 100;
+            return pesoKg / (alturaM * alturaM);
+        }
+
+        // Calcular rango saludable en kg según altura y IMC 18.5-24.9
+        function getHealthyWeightRange(estaturaCm) {
+            if (!estaturaCm || estaturaCm <= 0) return null;
+            const heightM = estaturaCm / 100;
+            const minKg = 18.5 * heightM * heightM;
+            const maxKg = 24.9 * heightM * heightM;
+            return { min: minKg.toFixed(1), max: maxKg.toFixed(1) };
+        }
+
+        function showRedAlertIfExcess(imc) {
+            if (imc >= 25) {
+                document.getElementById('alert-modal').classList.remove('hidden');
+            }
+        }
+
+        function getPersonaData(persona) {
+            return allRecords.filter(r => r.persona === persona).sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+        }
+
+        // Actualizar la edad actual en el contenedor y el rango saludable según la última estatura
+        function updatePersonaMetadata(persona) {
+            const ageSpan = document.getElementById(`${persona}-current-age`);
+            if (ageSpan) {
+                const currentAge = getCurrentAge(BIRTH_DATES[persona]);
+                ageSpan.innerText = `${currentAge} años`;
+            }
+            const records = getPersonaData(persona);
+            if (records.length > 0) {
+                const latestHeight = records[0].estatura;
+                const range = getHealthyWeightRange(latestHeight);
+                const rangeDiv = document.getElementById(`${persona}-healthy-range`);
+                if (range && rangeDiv) {
+                    rangeDiv.innerHTML = `<i class="fas fa-heartbeat"></i> <span>Rango saludable (IMC 18.5–24.9): ${range.min} kg - ${range.max} kg (según última altura ${latestHeight.toFixed(1)} cm)</span>`;
+                } else if (rangeDiv) {
+                    rangeDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>No hay altura registrada para calcular rango saludable.</span>`;
+                }
+            } else {
+                const rangeDiv = document.getElementById(`${persona}-healthy-range`);
+                if (rangeDiv) rangeDiv.innerHTML = `<i class="fas fa-chart-line"></i> <span>Registre un control para ver el rango saludable.</span>`;
+            }
+        }
+
+        function renderTableAndKPIs(persona, page) {
+            const data = getPersonaData(persona);
+            const totalRows = data.length;
+            const totalPages = Math.ceil(totalRows / ROWS_PER_PAGE);
+            const startIdx = (page - 1) * ROWS_PER_PAGE;
+            const pageData = data.slice(startIdx, startIdx + ROWS_PER_PAGE);
+            const tbody = document.getElementById(`${persona}-table-body`);
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (pageData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400"><i class="fas fa-clipboard-list text-2xl mb-2 block"></i>Sin registros</td></tr>`;
+            } else {
+                pageData.forEach((item, idx) => {
+                    const globalRow = startIdx + idx + 1;
+                    const edad = calculateAge(BIRTH_DATES[persona], item.fecha);
+                    const imc = calcIMC(item.peso, item.estatura).toFixed(1);
+                    const row = `<tr class="hover:bg-slate-50 border-b border-slate-50">
+                        <td class="py-3 px-3 text-sm font-mono text-slate-500">${globalRow}</td>
+                        <td class="py-3 px-3 text-sm text-slate-700 font-medium">${formatDate(item.fecha)}</td>
+                        <td class="py-3 px-3 text-sm text-slate-700">${edad}</td>
+                        <td class="py-3 px-3 text-sm text-slate-700">${item.estatura.toFixed(1)}</td>
+                        <td class="py-3 px-3 text-sm font-semibold text-slate-800">${item.peso.toFixed(1)}</td>
+                        <td class="py-3 px-3 text-sm ${imc >= 25 ? 'text-red-600 font-bold' : 'text-slate-600'}">${imc}</td>
+                        <td class="py-3 px-3 text-center print-hide">
+                            <button onclick="window.editRecord('${item.id}')" class="text-slate-500 hover:text-slate-800 mr-2 transition"><i class="fas fa-edit"></i></button>
+                            <button onclick="window.deleteRecord('${item.id}')" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+            // Paginación UI
+            const pagContainer = document.getElementById(`${persona}-pagination`);
+            const infoSpan = document.getElementById(`${persona}-pag-info`);
+            if (pagContainer) {
+                pagContainer.innerHTML = '';
+                if (totalPages > 1) {
+                    for (let i = 1; i <= totalPages; i++) {
+                        const btn = document.createElement('button');
+                        btn.textContent = i;
+                        btn.className = `w-8 h-8 rounded-lg text-xs font-semibold transition ${i === page ? 'bg-slate-900 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
+                        btn.onclick = () => {
+                            if (persona === 'romulo') { romuloPage = i; renderAll(); }
+                            else { paolaPage = i; renderAll(); }
+                        };
+                        pagContainer.appendChild(btn);
+                    }
+                }
+            }
+            if (infoSpan) {
+                const start = startIdx + 1;
+                const end = Math.min(startIdx + ROWS_PER_PAGE, totalRows);
+                infoSpan.innerText = totalRows === 0 ? '0 registros' : `Mostrando ${start}-${end} de ${totalRows}`;
+            }
+
+            // KPIs
+            const lastWeightSpan = document.getElementById(`${persona}-last-weight`);
+            const diffSpan = document.getElementById(`${persona}-diff`);
+            const lastDateSpan = document.getElementById(`${persona}-last-date`);
+            const countSpan = document.getElementById(`${persona}-count`);
+            if (data.length === 0) {
+                lastWeightSpan.innerText = '— kg';
+                diffSpan.innerText = '—';
+                lastDateSpan.innerText = '—';
+                countSpan.innerText = '0';
+                return;
+            }
+            const latest = data[0];
+            lastWeightSpan.innerText = `${latest.peso.toFixed(1)} kg`;
+            lastDateSpan.innerText = formatDate(latest.fecha);
+            countSpan.innerText = data.length;
+            let diffText = 'N/A';
+            if (data.length >= 2) {
+                const prev = data[1];
+                const diff = latest.peso - prev.peso;
+                const sign = diff > 0 ? '+' : '';
+                diffText = `${sign}${diff.toFixed(1)} kg`;
+                if (diff === 0) diffText = '0 kg';
+            }
+            diffSpan.innerText = diffText;
+        }
+
+        function updateChart() {
+            const romuloData = allRecords.filter(r => r.persona === 'romulo');
+            const paolaData = allRecords.filter(r => r.persona === 'paola');
+            const groupByMonth = (data) => {
+                const map = new Map();
+                data.forEach(record => {
+                    const monthKey = record.fecha.substring(0,7);
+                    if (!map.has(monthKey)) map.set(monthKey, { sum: 0, count: 0 });
+                    const entry = map.get(monthKey);
+                    entry.sum += record.peso;
+                    entry.count++;
+                });
+                const result = [];
+                for (let [key, val] of map.entries()) {
+                    result.push({ month: key, avg: val.sum / val.count });
+                }
+                return result.sort((a,b) => a.month.localeCompare(b.month));
+            };
+            const romuloMonthly = groupByMonth(romuloData);
+            const paolaMonthly = groupByMonth(paolaData);
+            const allMonthsSet = new Set([...romuloMonthly.map(m => m.month), ...paolaMonthly.map(m => m.month)]);
+            const sortedMonths = Array.from(allMonthsSet).sort();
+            const romuloValues = sortedMonths.map(month => {
+                const found = romuloMonthly.find(m => m.month === month);
+                return found ? found.avg : null;
+            });
+            const paolaValues = sortedMonths.map(month => {
+                const found = paolaMonthly.find(m => m.month === month);
+                return found ? found.avg : null;
+            });
+            const labels = sortedMonths.map(m => {
+                const [y, mo] = m.split('-');
+                return `${mo}/${y}`;
+            });
+            const ctx = document.getElementById('evolutionChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Rómulo (kg)', data: romuloValues, borderColor: '#1e293b', backgroundColor: 'transparent', tension: 0.2, fill: false, borderWidth: 2, pointBackgroundColor: '#0f172a', pointRadius: 3 },
+                        { label: 'Paola (kg)', data: paolaValues, borderColor: '#e11d48', backgroundColor: 'transparent', tension: 0.2, fill: false, borderWidth: 2, pointBackgroundColor: '#be123c', pointRadius: 3 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    plugins: {
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw?.toFixed(1)} kg` } },
+                        legend: { position: 'top' }
+                    },
+                    scales: { y: { title: { display: true, text: 'Peso (kg)', color: '#475569' }, grid: { color: '#e9eef3' } }, x: { title: { display: true, text: 'Mes / Año', color: '#475569' }, grid: { display: false } } }
+                }
+            });
+        }
+
+        function renderAll() {
+            renderTableAndKPIs('romulo', romuloPage);
+            renderTableAndKPIs('paola', paolaPage);
+            updatePersonaMetadata('romulo');
+            updatePersonaMetadata('paola');
+            updateChart();
+        }
+
+        async function saveRecord(event) {
+            event.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const persona = document.getElementById('persona-select').value;
+            const fecha = document.getElementById('fecha-control').value;
+            const estatura = parseFloat(document.getElementById('estatura-control').value);
+            const peso = parseFloat(document.getElementById('peso-control').value);
+            if (!fecha || isNaN(estatura) || isNaN(peso) || estatura <= 0 || peso <= 0) {
+                showToast('Complete todos los campos correctamente', 'error');
+                return;
+            }
+            const data = { persona, fecha, estatura, peso };
+            try {
+                if (id) {
+                    const ref = doc(db, "pesocorporal", id);
+                    await updateDoc(ref, data);
+                    showToast('Registro actualizado', 'success');
+                } else {
+                    await addDoc(recordsCollection, data);
+                    showToast('Registro agregado', 'success');
+                    const imcCheck = calcIMC(peso, estatura);
+                    if (imcCheck >= 25) showRedAlertIfExcess(imcCheck);
+                }
+                closeEntryModal();
+                if (persona === 'romulo') romuloPage = 1;
+                else paolaPage = 1;
+            } catch (err) {
+                console.error(err);
+                showToast('Error al guardar', 'error');
+            }
+        }
+
+        window.deleteRecord = async (id) => {
+            if (!confirm('¿Eliminar permanentemente este registro?')) return;
+            try {
+                await deleteDoc(doc(db, "pesocorporal", id));
+                showToast('Registro eliminado', 'success');
+            } catch (err) {
+                showToast('Error al eliminar', 'error');
+            }
+        };
+
+        window.editRecord = async (id) => {
+            const record = allRecords.find(r => r.id === id);
+            if (!record) return;
+            document.getElementById('edit-id').value = record.id;
+            document.getElementById('persona-select').value = record.persona;
+            document.getElementById('fecha-control').value = record.fecha;
+            document.getElementById('estatura-control').value = record.estatura;
+            document.getElementById('peso-control').value = record.peso;
+            document.getElementById('modal-title').innerHTML = '<i class="fas fa-pen-alt"></i> Editar control';
+            document.getElementById('entry-modal').classList.remove('hidden');
+        };
+
+        function closeEntryModal() { document.getElementById('entry-modal').classList.add('hidden'); }
+        function closeAlertModal() { document.getElementById('alert-modal').classList.add('hidden'); }
+        window.openGlobalModal = () => {
+            document.getElementById('weight-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('fecha-control').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-title').innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo control';
+            document.getElementById('entry-modal').classList.remove('hidden');
+        };
+        window.closeEntryModal = closeEntryModal;
+        window.closeAlertModal = closeAlertModal;
+
+        function initFirestoreListener() {
+            if (unsubscribe) unsubscribe();
+            const q = query(recordsCollection, orderBy("fecha", "desc"));
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                allRecords = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    allRecords.push({
+                        id: docSnap.id,
+                        persona: data.persona,
+                        fecha: data.fecha,
+                        estatura: data.estatura,
+                        peso: data.peso
+                    });
+                });
+                renderAll();
+                showToast('Datos sincronizados con Firebase', 'success');
+            }, (error) => {
+                console.error(error);
+                showToast('Error de conexión con Firestore', 'error');
+            });
+        }
+
+        window.enterApp = () => {
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('app-page').classList.remove('hidden');
+            initFirestoreListener();
+        };
+        window.exitApp = () => {
+            if (unsubscribe) unsubscribe();
+            document.getElementById('app-page').classList.add('hidden');
+            document.getElementById('landing-page').classList.remove('hidden');
+        };
+
+        document.getElementById('weight-form').addEventListener('submit', saveRecord);
+    </script>
+</body>
+</html>
